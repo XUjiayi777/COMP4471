@@ -82,7 +82,7 @@ class FullyConnectedNet(object):
             last_size=size
             self.params[f'b{i}']=np.zeros(size)
 
-            if self.normalization=="batchnorm" and i<len(hidden_dims):
+            if self.normalization and i<=len(hidden_dims):
                 self.params[f"gamma{i}"]=np.ones(size)
                 self.params[f"beta{i}"]= np.zeros(size)
         self.params[f'w{self.num_layers}']=weight_scale*np.random.randn(last_size,num_classes)
@@ -163,6 +163,8 @@ class FullyConnectedNet(object):
         out=0
         affine_cache=[]
         relu_cache=[]
+        batch_cache=[]
+        layer_cache=[]
         for i in range(self.num_layers):
             w=self.params[f'w{i+1}']
             b=self.params[f'b{i+1}']
@@ -172,6 +174,16 @@ class FullyConnectedNet(object):
                 else:
                     out,cache=affine_forward(out,w,b)
                 affine_cache.append(cache)
+                if self.normalization=="batchnorm":
+                    gamma=self.params[f"gamma{i+1}"]
+                    beta=self.params[f"beta{i+1}"]
+                    out,cache=batchnorm_forward(out,gamma,beta,self.bn_params[i])
+                    batch_cache.append(cache)
+                if self.normalization=="layernorm":
+                    gamma=self.params[f"gamma{i+1}"]
+                    beta=self.params[f"beta{i+1}"]
+                    out,cache=layernorm_forward(out,gamma,beta,self.bn_params[i])
+                    layer_cache.append(cache)                    
                 out,cache=relu_forward(out)
                 relu_cache.append(cache)         
             else:
@@ -210,6 +222,14 @@ class FullyConnectedNet(object):
                 dout,dw,db=affine_backward(dout,affine_cache[j-1])
             else:
                 dout=relu_backward(dout,relu_cache[j-1])
+                if self.normalization=="batchnorm":
+                    dout,dgamma,dbeta=batchnorm_backward_alt(dout,batch_cache[j-1])
+                    grads[f'gamma{j}']=dgamma
+                    grads[f'beta{j}']=dbeta
+                if self.normalization=="layernorm":
+                    dout,dgamma,dbeta=layernorm_backward(dout,layer_cache[j-1])
+                    grads[f'gamma{j}']=dgamma
+                    grads[f'beta{j}']=dbeta
                 dout,dw,db=affine_backward(dout,affine_cache[j-1])
             grads[f'w{j}']=dw+self.reg*self.params[f'w{j}']
             grads[f'b{j}']=db
