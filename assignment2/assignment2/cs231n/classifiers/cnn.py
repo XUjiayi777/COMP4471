@@ -63,7 +63,13 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        C, H, W=input_dim
+        self.params[f'W{1}']=np.random.normal(loc=0.0, scale=weight_scale, size=(num_filters, C , filter_size, filter_size))
+        self.params[f'b{1}']=np.zeros(num_filters)
+        self.params[f'W{2}']=np.random.normal(loc=0.0, scale=weight_scale, size=(num_filters*H*W//4,hidden_dim))
+        self.params[f'b{2}']=np.zeros(hidden_dim)
+        self.params[f'W{3}']=np.random.normal(loc=0.0, scale=weight_scale, size=(hidden_dim,num_classes))
+        self.params[f'b{3}']=np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -102,7 +108,17 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        all_cache=[]
+        for i in range(3):
+            w=self.params[f'W{i+1}']
+            b=self.params[f'b{i+1}']
+            if i+1==1:
+                out,cache=conv_relu_pool_forward(X,w,b,conv_param,pool_param)
+            elif i+1==2:
+                out,cache=affine_relu_forward(out,w,b)                   
+            else:
+                scores,cache=affine_forward(out,w,b)
+            all_cache.append(cache)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,7 +141,18 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss,dout=softmax_loss(scores,y)
+        for i in range(3):
+            loss+=0.5*self.reg*np.sum(self.params[f'W{i+1}']*self.params[f'W{i+1}'])
+        for j in range(3,0,-1):
+            if j == 3:
+                dout,dw,db=affine_backward(dout,all_cache[j-1])
+            elif j == 2:
+                dout, dw, db=affine_relu_backward(dout,all_cache[j-1])
+            else:
+                dout,dw,db=conv_relu_pool_backward(dout,all_cache[j-1])
+            grads[f'W{j}']=dw+self.reg*self.params[f'W{j}']
+            grads[f'b{j}']=db
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
