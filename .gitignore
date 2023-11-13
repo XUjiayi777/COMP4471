@@ -1,3 +1,7 @@
 *.zip
+<<<<<<< HEAD
 __pycache__
 assignment1/assignmen1/datasets/
+=======
+__pycache__
+>>>>>>> f0e789338ca1bb7fd55e1329ad9d05bed05f3791
