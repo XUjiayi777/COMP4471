@@ -148,7 +148,22 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        initial_hidden_state,cache1=affine_forward(features, W_proj, b_proj) # initial_hidden_state(N,H)
+        word_vectors,cache2=word_embedding_forward(captions_in,W_embed) # word_vectors(N,T,D)
+        if self.cell_type=="rnn":
+          h,cache3=rnn_forward(word_vectors, initial_hidden_state, Wx, Wh, b) # h(N,T,H)
+        scores,cache4=temporal_affine_forward(h, W_vocab, b_vocab) # scores(N,T,V)
+        loss,dscores=temporal_softmax_loss(scores,captions_out,mask)
+
+        dh, dw_vocab, db_vocab=temporal_affine_backward(dscores, cache4)
+        grads["W_vocab"],grads["b_vocab"]=dw_vocab,db_vocab
+        if self.cell_type=="rnn":
+          dvector, dh0, dWx, dWh, db=rnn_backward(dh,cache3)
+          grads["Wx"],grads["Wh"],grads["b"]=dWx,dWh,db
+        dW_embed=word_embedding_backward(dvector,cache2)
+        grads["W_embed"]=dW_embed
+        dfeatures,dw_proj,db_proj=affine_backward(dh0,cache1)
+        grads["W_proj"],grads["b_proj"]=dw_proj,db_proj
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -215,8 +230,17 @@ class CaptioningRNN:
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        prev_h,_=affine_forward(features, W_proj, b_proj)
+        word_pred=np.full((N,1),self._start)
+        for i in range(max_length):
+          word_embed,_=word_embedding_forward(word_pred,W_embed)
+          word_embed=np.squeeze(word_embed)
+          if self.cell_type=="rnn":
+            prev_h,_=rnn_step_forward(word_embed,prev_h,Wx,Wh,b)
+          scores,_=affine_forward(prev_h, W_vocab, b_vocab)
+          word_pred=np.argmax(scores,axis=1)
+          captions[:,i]=word_pred
+          word_pred=word_pred.reshape((N,1))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
