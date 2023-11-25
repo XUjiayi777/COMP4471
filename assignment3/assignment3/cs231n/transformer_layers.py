@@ -37,8 +37,11 @@ class PositionalEncoding(nn.Module):
         # less than 5 lines of code.                                               #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        d=embed_dim
+        even_index = [i for i in range(d) if i % 2 == 0]
+        odd_index = [j for j in range(d) if j % 2 != 0]
+        pe[:,:,even_index]=torch.tensor([[math.sin(i * 10000**(-j/embed_dim)) for j in even_index] for i in range(max_len)])
+        pe[:,:,odd_index] = torch.tensor([[math.cos(i * 10000**(-(j-1)/embed_dim)) for j in odd_index] for i in range(max_len)])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +73,8 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = x.add(self.pe[:, :S, :D])
+        output = self.dropout(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -164,8 +168,19 @@ class MultiHeadAttention(nn.Module):
         #     function masked_fill may come in handy.                              #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        H=self.n_head
+        key=self.key(key).reshape(N,T,H,E//H).transpose(1,2) #(N, H, T, E/H)
+        value=self.value(value).reshape(N,T,H,E//H).transpose(1,2) #(N, H, T, E/H)
+        query=self.query(query).reshape(N,S,H,E//H).transpose(1,2) #(N, H, S, E/H)
+        a=query.matmul(key.transpose(2, 3))/math.sqrt(E/H) #(N, H, S, T)
+        dropout=self.attn_drop
+        if attn_mask!= None:
+          a = a.masked_fill(~attn_mask, -math.inf)
+        softmax = torch.nn.Softmax(dim=-1)
+        a=softmax(a)
+        a=dropout(a)
+        Yi= a.matmul(value).transpose(1,2).reshape(N,S,E)
+        output=self.proj(Yi)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

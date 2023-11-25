@@ -4,3 +4,6 @@ __pycache__
 .vscode/
 *.npz
 *.key
+pretrained_model
+data
+assignment3/assignment3/cs231n/datasets
